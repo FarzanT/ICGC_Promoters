@@ -3,24 +3,25 @@
 # ==== Translate between ENSG, ENST and HGNC IDs ====
 # Packages (install if needed):
 library(fastmatch)
-library(readr)
+library(data.table)
 library(biomaRt)
 library(stringr)
 
 # Load ID translation data
-table = read_tsv("LookupTables/IDs_convert_Table.txt")
+# table = read_tsv("LookupTables/IDs_convert_Table.txt")
+# Load the updated ID translation data
+table = data.table::fread("LookupTables/IDs_convert_Table_updated.txt")
 table
 colnames(table)
 
 # Create a dictionary where ENSG and ENST can be converted to HGNC symbols
 listMarts()
 # ENSEMBL_MART_ENSEMBL
-mart <- biomaRt::useMart(biomart = "ENSEMBL_MART_ENSEMBL")
-listDatasets(mart)
+# UPDATE: Use archived versions of ENSEMBL!
+mart = useMart(host='may2009.archive.ensembl.org', 
+                    biomart='ENSEMBL_MART_ENSEMBL', 
+                    dataset='hsapiens_gene_ensembl')
 
-# No.41, 'hsapiens_gene_ensembl'
-mart <- biomaRt::useMart(biomart = "ENSEMBL_MART_ENSEMBL",
-                         dataset = "hsapiens_gene_ensembl")
 grep(".*transcript.*", listAttributes(mart)$name, value = T)
 # No.99, "ensembl_transcript_id"
 
@@ -109,7 +110,7 @@ table
 # Reload the original table for comparison
 origTable = read_tsv("LookupTables/IDs_convert_Table.txt")
 sum(is.na(origTable$`HGNC symbol`)) - sum(is.na(table$`HGNC symbol`))
-# 1699 Change (hopefully in a good way)
+# 1722 changes (hopefully in a good way)
 
 # Save the table
 write_delim(table, "LookupTables/IDs_convert_Table_updated.txt", col_names = T)
