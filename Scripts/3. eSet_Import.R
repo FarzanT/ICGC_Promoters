@@ -1,3 +1,5 @@
+# eSet_Import.R
+
 # Useful packages
 install.packages(c("readr", "data.table", "igraph"))
 source("https://bioconductor.org/biocLite.R")
@@ -253,13 +255,25 @@ saveRDS(eSet, "Data/ExpressionSet.rds")
 # Now we can load the ExpressionSet and modify it directly
 eSet <- readRDS("Data/ExpressionSet.rds")
 
-temp = pData(eSet)[1,]
+# ==== Add cancer type to phenotypeData ====
+pData(eSet)[1,]
+# Must read the white list text files from meta_tumor_cohorts folder
+whitelists = list.files(path = "meta_tumor_cohorts/",
+                        pattern = ".*whitelist.txt", full.names = TRUE)
+cancerTypes <- data.table::data.table()
+for (file in whitelists) {
+  temp = data.table::fread(file)
+  cancerTypes <- data.table::rbindlist(list(cancerTypes, temp))
+}
+colnames(cancerTypes) <- c("ID", "Type")
+cancerTypes
+varLabels(eSet)
+# Most identifiers (0.75) in the meta_tumor_cohorts are tagged with 'vcf_file' ID
+sum(pData(eSet)[,"vcf_file"] %in% cancerTypes$ID) / nrow(pData(eSet))
+# Add this data to pData
+pIdx = fastmatch::fmatch(pData(eSet)$vcf_file, cancerTypes$ID, nomatch = NA)
+pData(eSet)$`tumor_type` <- cancerTypes[pIdx, "Type"]
 
-# TODO: Add cancer type to each sample, create a lookup function to query
-# expression data based on features (genes) and samples (donors)
+saveRDS(eSet, "Data/ExpressionSet.rds")
 
-
-# Load the updated mutation scores files
-mut_scores <- readRDS("Data/Updated_mutation_scores/Chr22.rds")
-mut_scores
-
+# [END]
