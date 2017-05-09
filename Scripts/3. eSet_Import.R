@@ -17,6 +17,7 @@ library(stringr)
 
 # Read the expression data
 eSetTSV <- data.table::fread("joint_fpkm_uq.tsv")
+# temp = data.table::fread("join")
 
 # ==== Assay Data Preparation ====
 # ENSG IDs are in the first column
@@ -32,8 +33,8 @@ row.names(eSetTSV) <- rowNames
 # Check column names
 colnames(eSetTSV) # Correct
 
-# Must convert assayData to a matrix
-eSetMatrix <- as.matrix(eSetTSV)
+# Must convert assayData to a data.matrix (which tries to hold numeric values)
+eSetMatrix <- data.matrix(eSetTSV)
 # Discard the "feature" column
 eSetMatrix <- eSetMatrix[,-1]
 ncol(eSetMatrix)
@@ -80,7 +81,7 @@ class(query)
 colnames(query) <- colnames(geneLookup)
 # Check
 before = nrow(geneLookup)
-geneLookup <- rbindlist(list(geneLookup, query))
+geneLookup <- data.table::rbindlist(list(geneLookup, query))
 after = nrow(geneLookup)
 after == before + nrow(query)
 
@@ -103,7 +104,7 @@ length(unmatched) - nrow(query)
 colnames(query) <- colnames(geneLookup)
 # Check
 before = nrow(geneLookup)
-geneLookup <- rbindlist(list(geneLookup, query))
+geneLookup <- data.table::rbindlist(list(geneLookup, query))
 after = nrow(geneLookup)
 after == before + nrow(query)
 
@@ -126,7 +127,7 @@ length(unmatched) - nrow(query)
 colnames(query) <- colnames(geneLookup)
 # Check
 before = nrow(geneLookup)
-geneLookup <- rbindlist(list(geneLookup, query))
+geneLookup <- data.table::rbindlist(list(geneLookup, query))
 after = nrow(geneLookup)
 after == before + nrow(query)
 
@@ -152,8 +153,10 @@ a = geneLookup[fmatch("ENSG00000264819", geneLookup$`Ensembl Gene ID`), 2]
 b = geneLookup[fmatch("ENSGR0000264819", geneLookup$`Ensembl Gene ID`), 2]
 a == b
 
+# Save
+data.table::fwrite(geneLookup, file = "LookupTables/IDs_convert_Table_updated.txt", sep = "\t")
 # ==== Feature Data Preparation ====
-
+geneLookup <- data.table::fread("LookupTables/IDs_convert_Table_updated.txt")
 # featureData is an AnnotatedDataFram where each row contains information
 # regarding each feature, e.g. Gene in this case. Row names must match.
 # Create a table where the ENSG IDs are mapped to ENST IDs and HGNC symbols
@@ -249,11 +252,11 @@ featureNames(eSet)[1:5]
 nrow(eSet)
 
 # Save eSet
-saveRDS(eSet, "Data/ExpressionSet.rds")
+# saveRDS(eSet, "Data/ExpressionSet.rds")
 
 
 # Now we can load the ExpressionSet and modify it directly
-eSet <- readRDS("Data/ExpressionSet.rds")
+# eSet <- readRDS("Data/ExpressionSet.rds")
 
 # ==== Add cancer type to phenotypeData ====
 pData(eSet)[1,]
@@ -268,11 +271,12 @@ for (file in whitelists) {
 colnames(cancerTypes) <- c("ID", "Type")
 cancerTypes
 varLabels(eSet)
-# Most identifiers (0.75) in the meta_tumor_cohorts are tagged with 'vcf_file' ID
+# 0.75 of the IDs in the meta_tumor_cohorts are tagged with 'vcf_file' ID
 sum(pData(eSet)[,"vcf_file"] %in% cancerTypes$ID) / nrow(pData(eSet))
 # Add this data to pData
 pIdx = fastmatch::fmatch(pData(eSet)$vcf_file, cancerTypes$ID, nomatch = NA)
 pData(eSet)$`tumor_type` <- cancerTypes[pIdx, "Type"]
+pData(eSet)$`tumor_type` <- as.character(unlist(pData(eSet)$`tumor_type`))
 
 saveRDS(eSet, "Data/ExpressionSet.rds")
 
