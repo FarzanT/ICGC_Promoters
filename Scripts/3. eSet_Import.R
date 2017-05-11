@@ -278,6 +278,30 @@ pIdx = fastmatch::fmatch(pData(eSet)$vcf_file, cancerTypes$ID, nomatch = NA)
 pData(eSet)$`tumor_type` <- cancerTypes[pIdx, "Type"]
 pData(eSet)$`tumor_type` <- as.character(unlist(pData(eSet)$`tumor_type`))
 
+# Update May 9th, 2017
+# ==== 'Normal' to the tumorType of samples that are non-diseased ====
+varLabels(eSet)
+unique(pData(eSet)$dcc_specimen_type)
+# "Normal - tissue adjacent to primary", "Normal - solid tissue"
+
+
+tempAdjacent = pData(eSet)$`tumor_type`[pData(eSet)$`dcc_specimen_type` == "Normal - tissue adjacent to primary"]
+pData(eSet)$`tumor_type`[pData(eSet)$`dcc_specimen_type` == "Normal - solid tissue"]
+
+# NAs... tissue adjacent to what kind of primary tumor?
+# Add 'Normal' to normal solid tissue samples
+normalIdx = which(pData(eSet)$`dcc_specimen_type` == "Normal - solid tissue")
+pData(eSet)[normalIdx, "tumor_type"] <- "Normal"
+
+# For tumor adjacent samples that have NA as tumor type, add 'Normal'
+adjIdx = which(is.na(pData(eSet)$`tumor_type`) &
+      pData(eSet)$`dcc_specimen_type` == "Normal - tissue adjacent to primary")
+
+pData(eSet)$`tumor_type`[adjIdx] <- "Normal"
+
+# Check for remaining NAs
+naIdx = which(is.na(pData(eSet)$`tumor_type`))
+pData(eSet)$`dcc_specimen_type`[naIdx]
 saveRDS(eSet, "Data/ExpressionSet.rds")
 
 # [END]
